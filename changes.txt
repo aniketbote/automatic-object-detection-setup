@@ -1,0 +1,4 @@
+schedule {
+            step: 0
+            learning_rate: 0.000300000014249
+          }

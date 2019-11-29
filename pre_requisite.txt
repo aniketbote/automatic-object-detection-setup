@@ -1,0 +1,2 @@
+1. Git version control
+2. Tensorflow cpu or gpu
