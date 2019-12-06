@@ -7,12 +7,13 @@ import tarfile
 import pandas as pd
 from shutil import copyfile
 import sys
+import re
 
 #variables
 git_url = 'https://github.com/tensorflow/models.git'
 repo_path = os.getcwd()
 tensorflow_path = os.path.join(repo_path,'TensorFlow')
-protobuf_url = 'https://github.com/protocolbuffers/protobuf/releases/download/v3.9.1/protoc-3.9.1-win64.zip'
+protobuf_url = 'https://github.com/protocolbuffers/protobuf/releases/download/v3.11.1/protoc-3.11.1-win64.zip'
 label_img = 'https://www.dropbox.com/s/kqoxr10l3rkstqd/windows_v1.8.0.zip?dl=1'
 flag = True
 
@@ -34,8 +35,8 @@ def download_file(url,file_type,destination = '-1'):
             tar.extractall()
             tar.close()
 
-        
-def execute(cmd,out = False):
+
+def execute(cmd,out = False, ret = False):
     global flag
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     file_name = os.path.join(repo_path,'temp','logs.txt')
@@ -56,9 +57,11 @@ def execute(cmd,out = False):
         for line in data:
             f.write(line.decode(sys.stdout.encoding))
         f.close()
+    if ret == True:
+        return data
 
-    
-    
+
+
 
 #step 1
 #Tensorflow downloading.
@@ -125,12 +128,12 @@ print('Building object detection complete')
 
 
 
-#opening label img
-print('Opening label img')
-label_path = os.path.join(repo_path,'labelimg','windows_v1.8.0')
-os.chdir(label_path)
-execute('labelImg.exe')
-os.chdir(repo_path)
+# #opening label img
+# print('Opening label img')
+# label_path = os.path.join(repo_path,'labelimg','windows_v1.8.0')
+# os.chdir(label_path)
+# execute('labelImg.exe')
+# os.chdir(repo_path)
 
 
 
@@ -163,9 +166,25 @@ cmd5 = os.path.join(repo_path,'workspace','annotations','test_labels.csv')
 train_csv = cmd1 + cmd2 + cmd3
 test_csv = cmd1 + cmd4 + cmd5
 
-execute(train_csv)
-execute(test_csv)
-print('Conerting xml to csv completed')
+dtrain = execute(train_csv, ret = True)
+if re.search('##Successfully converted xml to csv.##',str(dtrain)):
+    print('Converting train xml to csv completed Successfully')
+else:
+    print('ERROR in Converting XML \n1. Might be a path problem \n2. check for spaces in path')
+    print('command = {}'.format(train_csv))
+    print()
+    execute(train_csv, out = True)
+    exit()
+
+dtest = execute(test_csv, ret = True)
+if re.search('##Successfully converted xml to csv.##',str(dtest)):
+    print('Converting test xml to csv completed Successfully')
+else:
+    print('ERROR in Converting XML \n1. Might be a path problem \n2. check for spaces in path')
+    print('command = {}'.format(test_csv))
+    print()
+    execute(test_csv, out = True)
+    exit()
 
 #creating generate_tfrecords
 print('Generating Tfrecords')
@@ -197,10 +216,32 @@ annot_path = os.path.join(repo_path,'workspace','annotations')
 img_path = os.path.join(repo_path,'workspace','images')
 tf_records_train = "python generate_tfrecord1.py --csv_input={}/train_labels.csv --img_path={}/train  --output_path={}/train.record".format(annot_path,img_path,annot_path)
 tf_records_test = "python generate_tfrecord1.py --csv_input={}/test_labels.csv --img_path={}/test  --output_path={}/test.record".format(annot_path,img_path,annot_path)
-execute(tf_records_train)
-print('\n' * 3)
-execute(tf_records_test)
-print('Tfrecords Generated')
+
+
+
+dtrain_rec = execute(tf_records_train, ret = True)
+if re.search('#*#Successfully created the TFRecords#*#',str(dtrain_rec)):
+    print('Converting train csv to record completed Successfully')
+else:
+    print('ERROR in Converting train csv to record \n1. Might be a path problem \n2. check for spaces in path')
+    print('command = {}'.format(tf_records_train))
+    print()
+    execute(tf_records_train,out = True)
+    exit()
+
+print()
+
+dtest_rec = execute(tf_records_test, ret = True)
+if re.search('#*#Successfully created the TFRecords#*#',str(dtest_rec)):
+    print('Converting test csv to record completed Successfully')
+else:
+    print('ERROR in Converting test csv to record \n1. Might be a path problem \n2. check for spaces in path')
+    print('command = {}'.format(tf_records_test))
+    print()
+    execute(tf_records_test,out = True)
+    exit()
+
+
 
 #downloading model
 data = pd.read_csv('model_zoo1.csv')
@@ -210,7 +251,7 @@ print(display)
 model_no = int(input('Enter the model no : '))
 pre_path = os.path.join(repo_path,'workspace','pre-trained-model')
 os.chdir(pre_path)
-model_url = df['link'][model_no] 
+model_url = df['link'][model_no]
 if df['name'][model_no] not in os.listdir(os.getcwd()):
     print('download model {}'.format(df['name'][model_no]))
     download_file(model_url,'tar')
@@ -220,54 +261,57 @@ if df['name'][model_no] not in os.listdir(os.getcwd()):
 
 #generating config
 print('Generating config')
-config_path = os.path.join(pre_path,df['name'][model_no],'pipeline.config')
-f = open(config_path,'r')
-filedata = f.read()
-f.close()
-
-#step 0 prob
-f = open('{}/changes.txt'.format(repo_path),'r')
-change_data = f.read()
-f.close()
-filedata = filedata.replace(change_data,' ')
-
-#numclasses
-annot_path = os.path.join(repo_path,'workspace','annotations')
-filedata = filedata.replace(r"num_classes: 90",r'num_classes: {}'.format(no_objects))
 
 training_path = os.path.join(repo_path,'workspace','training',df['name'][model_no])
 if not os.path.isdir(training_path):
     os.mkdir(training_path)
 model_path = os.path.join(pre_path,df['name'][model_no])
 
+config_url = df['config'][model_no]
+r = requests.get(config_url)
+f = open(training_path+r'\new.config','wb+')
+for line in r:
+    f.write(line)
+f.close()
+
+f = open(training_path+r'\new.config','r')
+filedata = f.read()
+
+#numclasses
+filedata = filedata.replace(r"num_classes: 90",r'num_classes: {}'.format(no_objects))
 
 #checkpoint
 r1 = r'fine_tune_checkpoint: "{}\model.ckpt"'.format(model_path)
 r1 = r1.replace('\\','/')
 r2 = '{}\n  from_detection_checkpoint : true'
-if df['name'][model_no] == 'ssd_mobilenet_v1_fpn_shared_box_predictor_640x640_coco14_sync_2018_07_03':
-    filedata = filedata.replace(r'fine_tune_checkpoint: "PATH_TO_BE_CONFIGURED/model.ckpt"',r2)
-else:
-    filedata = filedata.replace(r'fine_tune_checkpoint: "PATH_TO_BE_CONFIGURED/model.ckpt"',r1)
-    
+filedata = filedata.replace(r'fine_tune_checkpoint: "PATH_TO_BE_CONFIGURED/model.ckpt"',r1)
+
+
+#train_record
+annot_path = os.path.join(repo_path,'workspace','annotations')
+r1 = r'input_path: "{}\train.record"'.format(annot_path)
+r1 = r1.replace('\\','/')
+filedata = filedata.replace(r'input_path: "PATH_TO_BE_CONFIGURED/mscoco_train.record"',r1)
+filedata = filedata.replace(r'input_path: "PATH_TO_BE_CONFIGURED/mscoco_train.record-00000-of-00100"',r1)
+filedata = filedata.replace(r'input_path: "PATH_TO_BE_CONFIGURED/mscoco_train.record-?????-of-00100"',r1)
 
 #label_map
 r1 = r'label_map_path: "{}\label_map.pbtxt"'.format(annot_path)
 r1 = r1.replace('\\','/')
 filedata = filedata.replace(r'label_map_path: "PATH_TO_BE_CONFIGURED/mscoco_label_map.pbtxt"',r1)
 
-#train_record
-r1 = r'input_path: "{}\train.record"'.format(annot_path)
-r1 = r1.replace('\\','/')
-filedata = filedata.replace(r'input_path: "PATH_TO_BE_CONFIGURED/mscoco_train.record"',r1)
-filedata = filedata.replace(r'input_path: "PATH_TO_BE_CONFIGURED/mscoco_train.record-00000-of-00100"',r1)
-
-
 #test record
 r1 = r'input_path: "{}\test.record"'.format(annot_path)
 r1 = r1.replace('\\','/')
 filedata = filedata.replace(r'input_path: "PATH_TO_BE_CONFIGURED/mscoco_val.record"',r1)
 filedata = filedata.replace(r'input_path: "PATH_TO_BE_CONFIGURED/mscoco_val.record-00000-of-00010"',r1)
+filedata = filedata.replace(r'input_path: "PATH_TO_BE_CONFIGURED/mscoco_val.record-?????-of-00010"',r1)
+
+# #step 0 prob
+# f = open('{}/changes.txt'.format(repo_path),'r')
+# change_data = f.read()
+# f.close()
+# filedata = filedata.replace(change_data,' ')
 
 
 filedata = filedata.encode('utf-8')
@@ -279,16 +323,24 @@ print('Config generated')
 
 #training
 train_file_path = os.path.join(research_path,'slim')
+copyfile(os.path.join(research_path,'object_detection','legacy','eval.py'),os.path.join(train_file_path,'eval.py'))
 copyfile(os.path.join(research_path,'object_detection','legacy','train.py'),os.path.join(train_file_path,'train.py'))
 
-train_cmd = r'python {}\train.py --logtostderr --train_dir={}\ --pipeline_config_path={}\new.config'.format(train_file_path,training_path,training_path)
+
+train_cmd1 = r'python {}\train.py --logtostderr --train_dir={}\ --pipeline_config_path={}\new.config'.format(train_file_path,training_path,training_path)
+
+train_cmd2 = r'python {}\eval.py --logtostderr --train_dir={}\ --pipeline_config_path={}\new.config'.format(train_file_path,training_path,training_path)
 
 print('\n\nEXECUTE THIS COMMAND IN CMP PROMPT\n\n')
-print(train_cmd)
+print(train_cmd1)
+
+print('\n')
+
+print(train_cmd2)
 
 
 print('\nFinish')
-
-
-
-    
+#
+#
+#
+#

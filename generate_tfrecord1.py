@@ -24,7 +24,13 @@ flags.DEFINE_string('img_path', '', 'Path to images')
 FLAGS = flags.FLAGS
 
 
-##REPLACE_HERE_9999##
+def class_text_to_int(row_label):
+   if row_label == 'cat':
+         return 1
+   elif row_label == 'dog':
+         return 2
+   else:
+         None
 
 def split(df, group):
     data = namedtuple('data', ['filename', 'object'])
@@ -85,7 +91,7 @@ def main(_):
 
     writer.close()
     output_path = os.path.join(os.getcwd(), FLAGS.output_path)
-    print('#*#Successfully created the TFRecords#*#: {}'.format(output_path))
+    print('Successfully created the TFRecords: {}'.format(output_path))
 
 
 if __name__ == '__main__':

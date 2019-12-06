@@ -62,7 +62,7 @@ def main():
     xml_df = xml_to_csv(args.inputDir)
     xml_df.to_csv(
         args.outputFile, index=None)
-    print('Successfully converted xml to csv.')
+    print('##Successfully converted xml to csv.##')
 
 
 if __name__ == '__main__':
