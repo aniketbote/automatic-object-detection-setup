@@ -256,7 +256,7 @@ if df['name'][model_no] not in os.listdir(os.getcwd()):
     print('download model {}'.format(df['name'][model_no]))
     download_file(model_url,'tar')
     print('model downloaded')
-    os.chdir(repo_path)
+os.chdir(repo_path)
 
 
 #generating config
@@ -280,12 +280,25 @@ filedata = f.read()
 #numclasses
 filedata = filedata.replace(r"num_classes: 90",r'num_classes: {}'.format(no_objects))
 
-#checkpoint
+#checkpoint and from_detection_checkpoint
 r1 = r'fine_tune_checkpoint: "{}\model.ckpt"'.format(model_path)
 r1 = r1.replace('\\','/')
-r2 = '{}\n  from_detection_checkpoint : true'
-filedata = filedata.replace(r'fine_tune_checkpoint: "PATH_TO_BE_CONFIGURED/model.ckpt"',r1)
+r2 = '\n  from_detection_checkpoint : true'
+if re.search('from_detection_checkpoint : true',filedata):
+    filedata = filedata.replace(r'fine_tune_checkpoint: "PATH_TO_BE_CONFIGURED/model.ckpt"',r1)
+if re.search('from_detection_checkpoint : false',filedata):
+    filedata = filedata.replace(r'fine_tune_checkpoint: "PATH_TO_BE_CONFIGURED/model.ckpt"',r1)
+    filedata = filedata.replace(r'from_detection_checkpoint : false"',r2)
+if ((not re.search('from_detection_checkpoint : false',filedata)) or (not re.search('from_detection_checkpoint : true',filedata))):
+    r3 = r1 + r2
+    filedata = filedata.replace(r'fine_tune_checkpoint: "PATH_TO_BE_CONFIGURED/model.ckpt"',r3)
 
+
+
+#eval number of examples
+n_test = len(set(pd.read_csv(os.path.join(annot_path,'test_labels.csv'))['filename']))
+r1 = r'num_examples: {}'.format(n_test)
+filedata = filedata.replace(r'num_examples: 8000',r1)
 
 #train_record
 annot_path = os.path.join(repo_path,'workspace','annotations')
@@ -307,11 +320,6 @@ filedata = filedata.replace(r'input_path: "PATH_TO_BE_CONFIGURED/mscoco_val.reco
 filedata = filedata.replace(r'input_path: "PATH_TO_BE_CONFIGURED/mscoco_val.record-00000-of-00010"',r1)
 filedata = filedata.replace(r'input_path: "PATH_TO_BE_CONFIGURED/mscoco_val.record-?????-of-00010"',r1)
 
-# #step 0 prob
-# f = open('{}/changes.txt'.format(repo_path),'r')
-# change_data = f.read()
-# f.close()
-# filedata = filedata.replace(change_data,' ')
 
 
 filedata = filedata.encode('utf-8')
@@ -327,20 +335,40 @@ copyfile(os.path.join(research_path,'object_detection','legacy','eval.py'),os.pa
 copyfile(os.path.join(research_path,'object_detection','legacy','train.py'),os.path.join(train_file_path,'train.py'))
 
 
-train_cmd1 = r'python {}\train.py --logtostderr --train_dir={}\ --pipeline_config_path={}\new.config'.format(train_file_path,training_path,training_path)
+train_cmd = r'python {}\train.py --logtostderr --train_dir={}\ --pipeline_config_path={}\new.config'.format(train_file_path,training_path,training_path)
 
-train_cmd2 = r'python {}\eval.py --logtostderr --train_dir={}\ --pipeline_config_path={}\new.config'.format(train_file_path,training_path,training_path)
+eval_cmd = r'python {}\eval.py --logtostderr --checkpoint_dir={}\ --pipeline_config_path={}\new.config --eval_dir=workspace\eval_{}'.format(train_file_path,training_path,training_path,df['name'][model_no])
+
+tensorboard_training = r'tensorboard --logdir {}'.format(training_path)
+
+tensorboard_evaluation = r'tensorboard --logdir {}'.format(os.path.join(repo_path,'workspace','eval_{}'.format(df['name'][model_no])))
 
 print('\n\nEXECUTE THIS COMMAND IN CMP PROMPT\n\n')
-print(train_cmd1)
+print('Training command')
+print(train_cmd)
 
 print('\n')
+print('Evaluation command')
+print(eval_cmd)
 
-print(train_cmd2)
+print('\n')
+print('Tensorboard Training command')
+print(tensorboard_training)
+
+print('\n')
+print('Tensorboard Evaluation command')
+print(tensorboard_evaluation)
+
+
+f = open('training_command.txt','w+')
+f.write('###Training Command###\n')
+f.write(train_cmd)
+f.write('\n\n###Evaluation Command###\n')
+f.write(eval_cmd)
+f.write('\n\n###Tensorboard Training Command###\n')
+f.write(tensorboard_training)
+f.write('\n\n###Tensorboard Evaluation Command###\n')
+f.write(tensorboard_evaluation)
 
 
 print('\nFinish')
-#
-#
-#
-#
