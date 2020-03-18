@@ -1,3 +1,4 @@
 1. Git version control
 2. Tensorflow cpu or gpu
 3. python 3.6.8
+4. Visual Studio 15 or higher
