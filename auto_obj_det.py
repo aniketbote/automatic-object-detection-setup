@@ -9,7 +9,23 @@ from shutil import copyfile
 import sys
 import re
 
+try:
+    import pycocotools
+except ImportError as e:
+    #pycocotools installation
+    print('Installing Pycocotools')
+    pip_cmd = 'pip install {}'.format(pycocotools_url)
+    pip_data = execute(pip_cmd, ret = True)
+    if re.search('Successfully installed pycocotools',str(pip_data)) or re.search('Successfully built pycocotools',str(pip_data)):
+        print('Successfully installed pycocotool')
+    else:
+        print('ERROR in installing pycocotools')
+        execute(pip_cmd, out = True)
+
+
+
 #variables
+pycocotools_url = "git+https://github.com/philferriere/cocoapi.git#subdirectory=PythonAPI"
 git_url = 'https://github.com/tensorflow/models.git'
 repo_path = os.getcwd()
 tensorflow_path = os.path.join(repo_path,'TensorFlow')
@@ -61,7 +77,8 @@ def execute(cmd,out = False, ret = False):
         return data
 
 
-
+if 'temp' not in os.listdir(repo_path):
+    os.mkdir('temp')
 
 #step 1
 #Tensorflow downloading.
@@ -99,8 +116,6 @@ if 'workspace' not in os.listdir(repo_path):
             os.mkdir('images/train')
             os.mkdir('images/test')
     os.chdir(repo_path)
-if 'temp' not in os.listdir(repo_path):
-    os.mkdir('temp')
 print('Creating workspace complete')
 
 
@@ -144,6 +159,9 @@ objects = []
 for i in range(no_objects):
     temp = input('Object name of {} :'.format(i+1))
     objects.append(temp)
+
+# no_objects = 2
+# objects = ['cat','dog']
 
 f = open(os.path.join(repo_path,'workspace','annotations','label_map.pbtxt'),'wb+')
 for i in range(no_objects):
@@ -283,13 +301,13 @@ filedata = filedata.replace(r"num_classes: 90",r'num_classes: {}'.format(no_obje
 #checkpoint and from_detection_checkpoint
 r1 = r'fine_tune_checkpoint: "{}\model.ckpt"'.format(model_path)
 r1 = r1.replace('\\','/')
-r2 = '\n  from_detection_checkpoint : true'
-if re.search('from_detection_checkpoint : true',filedata):
+r2 = '\n  from_detection_checkpoint: true'
+if re.search('from_detection_checkpoint: true',filedata):
     filedata = filedata.replace(r'fine_tune_checkpoint: "PATH_TO_BE_CONFIGURED/model.ckpt"',r1)
-if re.search('from_detection_checkpoint : false',filedata):
+if re.search('from_detection_checkpoint: false',filedata):
     filedata = filedata.replace(r'fine_tune_checkpoint: "PATH_TO_BE_CONFIGURED/model.ckpt"',r1)
-    filedata = filedata.replace(r'from_detection_checkpoint : false"',r2)
-if ((not re.search('from_detection_checkpoint : false',filedata)) or (not re.search('from_detection_checkpoint : true',filedata))):
+    filedata = filedata.replace(r'from_detection_checkpoint: false"',r2)
+if ((not re.search('from_detection_checkpoint: false',filedata)) or (not re.search('from_detection_checkpoint: true',filedata))):
     r3 = r1 + r2
     filedata = filedata.replace(r'fine_tune_checkpoint: "PATH_TO_BE_CONFIGURED/model.ckpt"',r3)
 
