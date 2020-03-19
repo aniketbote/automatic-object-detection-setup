@@ -1,0 +1,11 @@
+###Training Command###
+python C:\Users\Aniket\Desktop\Aniket\automatic-object-detection-setup\TensorFlow\research\slim\train.py --logtostderr --train_dir=C:\Users\Aniket\Desktop\Aniket\automatic-object-detection-setup\workspace\training\faster_rcnn_resnet101_coco_2018_01_28\ --pipeline_config_path=C:\Users\Aniket\Desktop\Aniket\automatic-object-detection-setup\workspace\training\faster_rcnn_resnet101_coco_2018_01_28\new.config
+
+###Evaluation Command###
+python C:\Users\Aniket\Desktop\Aniket\automatic-object-detection-setup\TensorFlow\research\slim\eval.py --logtostderr --checkpoint_dir=C:\Users\Aniket\Desktop\Aniket\automatic-object-detection-setup\workspace\training\faster_rcnn_resnet101_coco_2018_01_28\ --pipeline_config_path=C:\Users\Aniket\Desktop\Aniket\automatic-object-detection-setup\workspace\training\faster_rcnn_resnet101_coco_2018_01_28\new.config --eval_dir=workspace\eval_faster_rcnn_resnet101_coco_2018_01_28
+
+###Tensorboard Training Command###
+tensorboard --logdir C:\Users\Aniket\Desktop\Aniket\automatic-object-detection-setup\workspace\training\faster_rcnn_resnet101_coco_2018_01_28
+
+###Tensorboard Evaluation Command###
+tensorboard --logdir C:\Users\Aniket\Desktop\Aniket\automatic-object-detection-setup\workspace\eval_faster_rcnn_resnet101_coco_2018_01_28
